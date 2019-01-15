@@ -123,9 +123,9 @@ function convertToJSContent(script, template, style, filename, filePath, options
 
   //兼容 windows
   filePath = filePath.replace(/\\/g, "/");
+
   result += processJavascript(filename, script, processTemplate(template));
   result += "\n\nglobal." + filename + " = " + filename + ";\n\n";
-  //伪造ES6格式的VUE组件
   result += "Vue.component('" + componentNameFrom(filename) + "', " + filename + ");\n\n";
   result += "\n}(window, Vue));";
   return result;
