@@ -97,10 +97,7 @@ function convertToJSContent(script, template, style, filename, filePath, options
     return "";
   }
 
-  let result = `(function(global, Vue, undefined){
-    if(!global.__FORGE_ES6_VUE_COMPONENTS__) {
-      global.__FORGE_ES6_VUE_COMPONENTS__ = {};
-    }
+  let result = `(function(global, Vue){
   `;
 
   if (options.autoLinkCss && style && style.length > 0) {
@@ -129,10 +126,9 @@ function convertToJSContent(script, template, style, filename, filePath, options
 
   //兼容 windows
   filePath = filePath.replace(/\\/g, "/");
-  result += processJavascript(filename, script, processTemplate(template), style, filePath);
+  result += processJavascript(filename, script, processTemplate(template));
   result += "\n\nglobal." + filename + " = " + filename + ";\n\n";
   //伪造ES6格式的VUE组件
-  result += "global.__FORGE_ES6_VUE_COMPONENTS__['" + filePath + "/" + filename + ".vue']=" + filename + ";\n";
   result += "Vue.component('" + componentNameFrom(filename) + "', " + filename + ");\n\n";
   result += "\n}(window, Vue));";
   return result;
@@ -150,26 +146,20 @@ function processTemplate(template) {
 /**
  * 处理js  将es6写的带export的部分转换成普通的组件定义
  * @param fileName
- * @param script
+ * @param result
  * @param processedTemplate
  * @param style
  * @returns {string|*}
  */
-function processJavascript(fileName, script, processedTemplate, style, filePath) {
-  script = script.replace(VUE_COMPONENT_IMPORT_REG, function (matchedLine, variableName, vuePath, index, contents) {
-    return "var " + variableName + " = global.__FORGE_ES6_VUE_COMPONENTS__['" + path.resolve(filePath, vuePath).replace(/\\/g, "/") + "']";
+function processJavascript(fileName, result, processedTemplate) {
+  result = result.replace(VUE_COMPONENT_IMPORT_REG, function () {
+    return '';
   });
 
-  script = script.replace(SCRIPT_REPLACER_REG, "var " + fileName + " = Vue.extend(");
-
-  script += ");\n";
-
-
-  script += fileName + ".options.template = " + processedTemplate;
-
-  // script = script.replace(/__gvptemplate/m, processedTemplate);
-
-  return script;
+  result = result.replace(SCRIPT_REPLACER_REG, "var " + fileName + " = Vue.extend(");
+  result += ");\n";
+  result += fileName + ".options.template = " + processedTemplate + ";";
+  return result;
 }
 
 function componentNameFrom(filename) {
