@@ -13,7 +13,7 @@ const TEMPLATE = "template";
 const TEMPLATE_ESCAPE_REG = /'/mg
 const TEMPLATE_ESCAPE_REG2 = /\r?\n/mg;
 const SCRIPT_REPLACER_REG = /^\s*export\s+default\s*/im;
-const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+([^\s]+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
+const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+(.+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
 
 module.exports = (options = { autoLinkCss: false, installComponent: true }) => {
   return through2.obj(function (file, encoding, callback) {
@@ -64,7 +64,7 @@ function parseVueToContents(vueContent, filename, options) {
   for (let i = 0, len = domEls.length; i < len; i++) {
     switch (domEls[i].name) {
       case SCRIPT:
-        result.js = DomUtils.getText(domEls[i]);
+        result.js = DomUtils.getText(domEls[i]).trim();
         break;
       case TEMPLATE:
         templateContents = DomUtils.getInnerHTML(domEls[i]);
@@ -151,7 +151,12 @@ function processTemplate(template) {
  * @param style
  * @returns {string|*}
  */
-function processJavascript(fileName, result, processedTemplate) {
+function processJavascript(fileName, script, processedTemplate) {
+  let result = script;
+  if (result.substr(result.length - 1, 1) === ';') {
+    result = result.substr(0, result.length - 1);
+  }
+
   result = result.replace(VUE_COMPONENT_IMPORT_REG, function () {
     return '';
   });

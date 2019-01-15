@@ -11,6 +11,9 @@
 </style>
 
 <script>
+import Text from 'vant';
+import { Text, Field } from 'vant';
+
 export default {
   data() {
     return {
@@ -18,6 +21,6 @@ export default {
     }
   },
   components: {}
-}
+};
 </script>
 
