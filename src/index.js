@@ -15,7 +15,7 @@ const TEMPLATE_ESCAPE_REG2 = /\r?\n/mg;
 const SCRIPT_REPLACER_REG = /^\s*export\s+default\s*/im;
 const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+([^\s]+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
 
-module.exports = (options = {}) => {
+module.exports = (options = { autoLinkCss: false, installComponent: true }) => {
   return through2.obj(function (file, encoding, callback) {
     if (!file) {
       throw new PluginError('gulp-vue-pack', 'file不存在');
@@ -125,8 +125,10 @@ function convertToJSContent(script, template, style, filename, filePath, options
   filePath = filePath.replace(/\\/g, "/");
 
   result += processJavascript(filename, script, processTemplate(template));
-  result += "\n\nglobal." + filename + " = " + filename + ";\n\n";
-  result += "Vue.component('" + componentNameFrom(filename) + "', " + filename + ");\n\n";
+  if (options.installComponent) {
+    result += "\n\nVue.component('" + componentNameFrom(filename) + "', " + filename + ");";
+  }
+  result += "\n\nglobal." + filename + " = " + filename + ";";
   result += "\n}(window, Vue));";
   return result;
 }
@@ -137,6 +139,10 @@ function convertToJSContent(script, template, style, filename, filePath, options
  * @returns {string}
  */
 function processTemplate(template) {
+  if (!template) {
+    return '';
+  }
+
   return "'" + template.replace(TEMPLATE_ESCAPE_REG, "\\'").replace(TEMPLATE_ESCAPE_REG2, "\\\n") + "'";
 }
 
@@ -155,7 +161,9 @@ function processJavascript(fileName, result, processedTemplate) {
 
   result = result.replace(SCRIPT_REPLACER_REG, "var " + fileName + " = Vue.extend(");
   result += ");\n";
-  result += fileName + ".options.template = " + processedTemplate + ";";
+  if (processedTemplate) {
+    result += "\n" + fileName + ".options.template = " + processedTemplate + ";";
+  }
   return result;
 }
 
