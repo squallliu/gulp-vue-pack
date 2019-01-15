@@ -3,12 +3,15 @@
   "version": "0.1.2",
   "description": "The multipage dev mode for Vue components packer.",
   "main": "src/index.js",
+  "publishConfig": {
+    "registry": "http://zw.nexus.whcyit.com/repository/npm-whcyit-private/"
+  },
   "scripts": {
     "test": "gulp example"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/radiations/gulp-vue-pack.git"
+    "url": "git+https://github.com/squallliu/gulp-vue-pack.git"
   },
   "files": [
     "src"
@@ -17,7 +20,7 @@
     "Vue",
     "Multipage"
   ],
-  "author": "bullub",
+  "author": "squall",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/radiations/gulp-vue-pack/issues"
