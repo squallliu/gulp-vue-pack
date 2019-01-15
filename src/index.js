@@ -33,7 +33,7 @@ module.exports = (options = { autoLinkCss: false, installComponent: true }) => {
 
     const filename = path.basename(file.path, ".vue");
     const fileContent = file.contents.toString(encoding);
-    const vue = parseVueToContents(fileContent, filename, path.dirname(file.path), options);
+    const vue = parseVueToContents(fileContent, filename, options);
     const fpath = path.dirname(file.path);
     this.push(createFile(file.base, file.cwd, fpath, filename + ".js", vue.js));
     //如果css文件无内容，则不生成css文件
@@ -54,7 +54,7 @@ function createFile(base, cwd, fpath, filename, content) {
   });
 }
 
-function parseVueToContents(vueContent, filename, filePath, options) {
+function parseVueToContents(vueContent, filename, options) {
   let templateContents = '';
   let result = { js: '', css: { content: '' } };
 
@@ -76,7 +76,7 @@ function parseVueToContents(vueContent, filename, filePath, options) {
     }
   }
 
-  result.js = convertToJSContent(result.js, templateContents, result.css.content, filename, filePath, options);
+  result.js = convertToJSContent(result.js, templateContents, result.css.content, filename, options);
   return result;
 }
 
@@ -89,7 +89,7 @@ function parseVueToContents(vueContent, filename, filePath, options) {
  * @param filePath 文件路径
  * @returns {*}
  */
-function convertToJSContent(script, template, style, filename, filePath, options) {
+function convertToJSContent(script, template, style, filename, options) {
   if (!script) {
     return "";
   }
@@ -120,9 +120,6 @@ function convertToJSContent(script, template, style, filename, filePath, options
       document.head.appendChild(styleLink);
     }());\n`;
   }
-
-  //兼容 windows
-  filePath = filePath.replace(/\\/g, "/");
 
   result += processJavascript(filename, script, processTemplate(template));
   if (options.installComponent) {
