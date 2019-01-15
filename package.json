@@ -7,7 +7,7 @@
     "registry": "http://zw.nexus.whcyit.com/repository/npm-whcyit-private/"
   },
   "scripts": {
-    "test": "gulp example"
+    "test": "rm -rf build && gulp example"
   },
   "repository": {
     "type": "git",

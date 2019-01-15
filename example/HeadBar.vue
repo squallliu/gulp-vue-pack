@@ -4,7 +4,7 @@
   </div>
 </template>
 
-<style>
+<style lang="less">
 .header {
   background-color: white;
 }

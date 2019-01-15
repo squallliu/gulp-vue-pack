@@ -3,8 +3,6 @@ const vuePack = require("./src");
 
 gulp.task("example", () => {
   return gulp.src("example/**/*.vue")
-    .pipe(vuePack({
-      style: 'less'
-    }))
+    .pipe(vuePack())
     .pipe(gulp.dest("build/"))
 });

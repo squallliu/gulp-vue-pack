@@ -15,7 +15,7 @@ const TEMPLATE_ESCAPE_REG2 = /\r?\n/mg;
 const SCRIPT_REPLACER_REG = /^\s*export\s+default\s*/im;
 const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+([^\s]+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
 
-module.exports = (options = { style: 'css' }) => {
+module.exports = (options = {}) => {
   return through2.obj(function (file, encoding, callback) {
     if (!file) {
       throw new PluginError('gulp-vue-pack', 'file不存在');
@@ -33,12 +33,12 @@ module.exports = (options = { style: 'css' }) => {
 
     const filename = path.basename(file.path, ".vue");
     const fileContent = file.contents.toString(encoding);
-    const contents = parseVueToContents(fileContent, filename, path.dirname(file.path), options);
+    const vue = parseVueToContents(fileContent, filename, path.dirname(file.path), options);
     const fpath = path.dirname(file.path);
-    this.push(createFile(file.base, file.cwd, fpath, filename + ".js", contents.js));
+    this.push(createFile(file.base, file.cwd, fpath, filename + ".js", vue.js));
     //如果css文件无内容，则不生成css文件
-    if (contents.css.length > 0) {
-      this.push(createFile(file.base, file.cwd, fpath, filename + "." + options.style, contents.css));
+    if (vue.css.content.length > 0) {
+      this.push(createFile(file.base, file.cwd, fpath, filename + "." + vue.css.type, vue.css.content));
     }
 
     callback();
@@ -55,32 +55,29 @@ function createFile(base, cwd, fpath, filename, content) {
 }
 
 function parseVueToContents(vueContent, filename, filePath, options) {
-  let scriptContents = "";
-  let styleContents = "";
-  let templateContents = "";
+  let templateContents = '';
+  let result = { js: '', css: { content: '' } };
 
-  let DomUtils = HTMLParser.DomUtils;
-  let domEls = HTMLParser.parseDOM(vueContent, { lowerCaseTags: true });
+  const DomUtils = HTMLParser.DomUtils;
+  const domEls = HTMLParser.parseDOM(vueContent, { lowerCaseTags: true });
 
   for (let i = 0, len = domEls.length; i < len; i++) {
     switch (domEls[i].name) {
       case SCRIPT:
-        scriptContents = DomUtils.getText(domEls[i]);
+        result.js = DomUtils.getText(domEls[i]);
         break;
       case TEMPLATE:
         templateContents = DomUtils.getInnerHTML(domEls[i]);
         break;
       case STYLE:
-        styleContents = DomUtils.getText(domEls[i]).trim();
+        result.css.type = domEls[i].attribs.lang || 'css';
+        result.css.content = DomUtils.getText(domEls[i]).trim();
         break;
     }
   }
 
-  let jsContent = convertToJSContent(scriptContents, templateContents, styleContents, filename, filePath, options);
-  return {
-    js: jsContent,
-    css: styleContents
-  }
+  result.js = convertToJSContent(result.js, templateContents, result.css.content, filename, filePath, options);
+  return result;
 }
 
 /**
