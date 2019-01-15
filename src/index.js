@@ -15,7 +15,7 @@ const TEMPLATE_ESCAPE_REG2 = /\r?\n/mg;
 const SCRIPT_REPLACER_REG = /^\s*export\s+default\s*/im;
 const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+([^\s]+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
 
-module.exports = (options = {}) => {
+module.exports = (options = { style: 'css' }) => {
   return through2.obj(function (file, encoding, callback) {
     if (!file) {
       throw new PluginError('gulp-vue-pack', 'file不存在');
@@ -38,7 +38,7 @@ module.exports = (options = {}) => {
     this.push(createFile(file.base, file.cwd, fpath, filename + ".js", contents.js));
     //如果css文件无内容，则不生成css文件
     if (contents.css.length > 0) {
-      this.push(createFile(file.base, file.cwd, fpath, filename + ".css", contents.css));
+      this.push(createFile(file.base, file.cwd, fpath, filename + "." + options.style, contents.css));
     }
 
     callback();
