@@ -15,59 +15,46 @@ const TEMPLATE_ESCAPE_REG2 = /\r?\n/mg;
 const SCRIPT_REPLACER_REG = /^\s*export\s+default\s*/im;
 const VUE_COMPONENT_IMPORT_REG = /^\s*import\s+([^\s]+)\s+from\s+([^;\n]+)[\s;]+?$/mg;
 
-module.exports = function () {
-  return through2.obj(vuePack);
+module.exports = (options = {}) => {
+  return through2.obj(function (file, encoding, callback) {
+    if (!file) {
+      throw new PluginError('gulp-vue-pack', 'file不存在');
+    }
+
+    if (file.isStream()) {
+      throw new PluginError('gulp-vue-pack', '只支持.vue文件');
+    }
+
+    //非文件,是目录
+    if (!file.contents) {
+      callback();
+      return;
+    }
+
+    const filename = path.basename(file.path, ".vue");
+    const fileContent = file.contents.toString(encoding);
+    const contents = parseVueToContents(fileContent, filename, path.dirname(file.path), options);
+    const fpath = path.dirname(file.path);
+    this.push(createFile(file.base, file.cwd, fpath, filename + ".js", contents.js));
+    //如果css文件无内容，则不生成css文件
+    if (contents.css.length > 0) {
+      this.push(createFile(file.base, file.cwd, fpath, filename + ".css", contents.css));
+    }
+
+    callback();
+  });
 };
 
-/**
- * 打包组件成js和css文件
- * @param file
- * @param encoding
- * @param callback
- */
-function vuePack(file, encoding, callback) {
-  if (!file) {
-    throw new PluginError('gulp-vue-pack', 'file不存在');
-  }
-
-  if (file.isStream()) {
-    throw new PluginError('gulp-vue-pack', '只支持.vue文件');
-  }
-
-  if (!file.contents) {
-    //非文件,是目录
-    callback();
-    return;
-  }
-
-  let fileName = path.basename(file.path, ".vue");
-
-  let fileContent = file.contents.toString(encoding);
-
-  let contents = parseVueToContents(fileContent, fileName, path.dirname(file.path));
-  let fpath = path.dirname(file.path);
-
-  this.push(createFile(file.base, file.cwd, fpath, fileName + ".js", contents.js));
-
-  //如果css文件无内容，则不生成css文件
-  if (contents.css.length > 0) {
-    this.push(createFile(file.base, file.cwd, fpath, fileName + ".css", contents.css));
-  }
-  callback();
-
-}
-
-function createFile(base, cwd, fpath, fileName, content) {
+function createFile(base, cwd, fpath, filename, content) {
   return new File({
     base: base,
     cwd: cwd,
-    path: path.join(fpath, fileName),
+    path: path.join(fpath, filename),
     contents: Buffer.from(content)
   });
 }
 
-function parseVueToContents(vueContent, fileName, filePath) {
-
+function parseVueToContents(vueContent, filename, filePath, options) {
   let scriptContents = "";
   let styleContents = "";
   let templateContents = "";
@@ -89,8 +76,7 @@ function parseVueToContents(vueContent, fileName, filePath) {
     }
   }
 
-  let jsContent = convertToJSContent(scriptContents, templateContents, styleContents, fileName, filePath);
-
+  let jsContent = convertToJSContent(scriptContents, templateContents, styleContents, filename, filePath, options);
   return {
     js: jsContent,
     css: styleContents
@@ -102,65 +88,54 @@ function parseVueToContents(vueContent, fileName, filePath) {
  * @param script 脚本内容
  * @param template 模板内容
  * @param style 样式内容
- * @param fileName 文件名
+ * @param filename 文件名
  * @param filePath 文件路径
  * @returns {*}
  */
-function convertToJSContent(script, template, style, fileName, filePath) {
-
+function convertToJSContent(script, template, style, filename, filePath, options) {
   if (!script) {
     return "";
   }
 
-  //兼容 windows
-  filePath = filePath.replace(/\\/g, "/");
-
-  let jsFileContent = `(function(global, Vue, undefined){
+  let result = `(function(global, Vue, undefined){
     if(!global.__FORGE_ES6_VUE_COMPONENTS__) {
-        global.__FORGE_ES6_VUE_COMPONENTS__ = {};
+      global.__FORGE_ES6_VUE_COMPONENTS__ = {};
     }
-`;
+  `;
 
-
-  if (style && style.length > 0) {
-    jsFileContent += `
+  if (options.autoLinkCss && style && style.length > 0) {
+    result += `
     (function(){
-        function getCurrentScriptBase() {
-            var src,
-                lidx,
-                scripts;
-            
-            if (document.currentScript) {
-                src = document.currentScript.src;
-            } else {
-                scripts = document.getElementsByTagName('script');
-                src = scripts[scripts.length - 1].src;
-            }
-            
-            lidx = src.lastIndexOf("/");
-            
-            return src.substring(0, lidx);
+      function getCurrentScriptBase() {
+        var src, lidx, scripts;
+        
+        if (document.currentScript) {
+          src = document.currentScript.src;
+        } else {
+          scripts = document.getElementsByTagName('script');
+          src = scripts[scripts.length - 1].src;
         }
         
-        var styleLink = document.createElement('link');
-        styleLink.rel = "stylesheet";
-        styleLink.href = getCurrentScriptBase() + "/" + "` + fileName + `.css";
-        document.head.appendChild(styleLink);
+        lidx = src.lastIndexOf("/");
+        return src.substring(0, lidx);
+      }
+      
+      var styleLink = document.createElement('link');
+      styleLink.rel = "stylesheet";
+      styleLink.href = getCurrentScriptBase() + "/" + "` + filename + `.css";
+      document.head.appendChild(styleLink);
     }());\n`;
   }
 
-  jsFileContent += processJavascript(fileName, script, processTemplate(template), style, filePath);
-
-  jsFileContent += "\n\nglobal." + fileName + " = " + fileName + ";\n\n";
-
+  //兼容 windows
+  filePath = filePath.replace(/\\/g, "/");
+  result += processJavascript(filename, script, processTemplate(template), style, filePath);
+  result += "\n\nglobal." + filename + " = " + filename + ";\n\n";
   //伪造ES6格式的VUE组件
-  jsFileContent += "global.__FORGE_ES6_VUE_COMPONENTS__['" + filePath + "/" + fileName + ".vue']=" + fileName + ";\n";
-
-  jsFileContent += "Vue.component('vue" + fileName.replace(/([A-Z])/g, "-$1").toLowerCase() + "', " + fileName + ");\n\n";
-
-  jsFileContent += "\n}(window, Vue));";
-
-  return jsFileContent;
+  result += "global.__FORGE_ES6_VUE_COMPONENTS__['" + filePath + "/" + filename + ".vue']=" + filename + ";\n";
+  result += "Vue.component('" + componentNameFrom(filename) + "', " + filename + ");\n\n";
+  result += "\n}(window, Vue));";
+  return result;
 }
 
 /**
@@ -181,7 +156,6 @@ function processTemplate(template) {
  * @returns {string|*}
  */
 function processJavascript(fileName, script, processedTemplate, style, filePath) {
-
   script = script.replace(VUE_COMPONENT_IMPORT_REG, function (matchedLine, variableName, vuePath, index, contents) {
     return "var " + variableName + " = global.__FORGE_ES6_VUE_COMPONENTS__['" + path.resolve(filePath, vuePath).replace(/\\/g, "/") + "']";
   });
@@ -196,4 +170,12 @@ function processJavascript(fileName, script, processedTemplate, style, filePath)
   // script = script.replace(/__gvptemplate/m, processedTemplate);
 
   return script;
+}
+
+function componentNameFrom(filename) {
+  let result = filename.replace(/([A-Z])/g, "-$1").toLowerCase();
+  if (result.slice(0, 1) === '-') {
+    result = result.slice(1);
+  }
+  return result;
 }
