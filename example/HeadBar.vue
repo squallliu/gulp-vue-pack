@@ -5,7 +5,8 @@
 </template>
 
 <style>
-#header {
+.header {
+  background-color: white;
 }
 </style>
 
