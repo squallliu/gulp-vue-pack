@@ -6,5 +6,6 @@ node_modules
 .editorconfig
 .idea
 .vscode
+gulp-vue-pack.iml
 gulpfile.js
 yarn.lock
